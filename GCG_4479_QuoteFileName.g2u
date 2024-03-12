@@ -1,0 +1,194 @@
+Program.Sub.ScreenSU.Start
+Gui.F_Question..Create
+Gui.F_Question..Caption("Print Quote")
+Gui.F_Question..Size(4965,1860)
+Gui.F_Question..MinX(0)
+Gui.F_Question..MinY(0)
+Gui.F_Question..Position(0,0)
+Gui.F_Question..BackColor(-2147483633)
+Gui.F_Question..MousePointer(0)
+Gui.F_Question..Event(UnLoad,F_Question_UnLoad)
+Gui.F_Question.cmdPrint.Create(Button)
+Gui.F_Question.cmdPrint.Size(1005,375)
+Gui.F_Question.cmdPrint.Position(1065,750)
+Gui.F_Question.cmdPrint.Caption("Print")
+Gui.F_Question.cmdPrint.Event(Click,cmdPrint_Click)
+Gui.F_Question.cmdSave.Create(Button)
+Gui.F_Question.cmdSave.Size(1005,375)
+Gui.F_Question.cmdSave.Position(2235,750)
+Gui.F_Question.cmdSave.Caption("Save")
+Gui.F_Question.cmdSave.Event(Click,cmdSave_Click)
+Gui.F_Question.cmdBoth.Create(Button)
+Gui.F_Question.cmdBoth.Size(1005,375)
+Gui.F_Question.cmdBoth.Position(3405,750)
+Gui.F_Question.cmdBoth.Caption("Both")
+Gui.F_Question.cmdBoth.Event(Click,cmdBoth_Click)
+Gui.F_Question.lblLabel.Create(Label,"Would you like to Print or Save a copy of the quote?",True,4200,360,0,195,225,True,0,"Arial",8,-2147483633,0)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+'This project will run from the pre print report hook. 16090
+'We will first check if we are looking at the right program. If so, query  the user if they would like to print the report or save a copy or both
+
+V.Local.sProgram.Declare(String)
+
+F.Intrinsic.Control.If(V.Caller.Hook, =, "16090")
+	'Check to see if the calling program is the one we will use for the project
+	V.Local.sProgram.Set(V.Passed.CALLING-PGM)
+	F.Intrinsic.Control.SelectCase(V.Local.sProgram)
+	F.Intrinsic.Control.Case("QTL010BI")
+		'Ask user if they would like to print the report, save a copy of the quote, or both
+		F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN, V.Ambient.PUser, V.Ambient.PPass)
+		Gui.F_Question..Show
+	F.Intrinsic.Control.CaseElse
+		'Call Unload subroutine
+		F.Intrinsic.Control.CallSub(f_question_unload)
+	F.Intrinsic.Control.EndSelect
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4479_QuoteFileName.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(f_question_unload)
+Function.Intrinsic.Control.EndIf
+
+Program.Sub.Main.End
+
+Program.Sub.cmdPrint_Click.Start
+'If they just want to print, we can just exit the program
+F.Intrinsic.Control.CallSub(f_question_unload)
+
+Program.Sub.cmdPrint_Click.End
+
+Program.Sub.cmdSave_Click.Start
+'If they only want to save, we need the report to be suppressed
+V.Passed.CANCEL.Set(1)
+F.Intrinsic.Control.CallSub(checkuser1)
+
+Program.Sub.cmdSave_Click.End
+
+Program.Sub.cmdBoth_Click.Start
+'We can go straight to the check user subroutine
+F.Intrinsic.Control.CallSub(checkuser1)
+
+Program.Sub.cmdBoth_Click.End
+
+Program.Sub.CheckUser1.Start
+F.Intrinsic.Control.SetErrorHandler("CheckUser1_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+V.Local.sQuoteNo.Declare(String)
+V.Local.sSQL.Declare(String)
+V.Local.sUser1.Declare(String)
+V.Local.sFileName.Declare(String)
+
+Gui.F_Question..Visible(False)
+'Grab the quote number first
+F.Intrinsic.String.Build("Select TOP 1 QUOTE from BI_LASER_QUOTE where RPTID = '000001' and TERMINAL_NO = '{0}'", V.Caller.Terminal, V.Local.sSQL)
+F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL, V.Local.sQuoteNo)
+'
+'F.Intrinsic.String.Build("Select USER_1 from V_QUOTE_HEADER where QUOTE_NO = '{0}'", V.Local.sQuoteNo, V.Local.sSQL)
+'F.ODBC.Connection!con.ExecuteAndReturn(V.Local.sSQL, V.Local.sUser1)
+'
+'F.Intrinsic.Control.If(V.Local.sUser1.Trim, =, "")
+'	F.Intrinsic.UI.Msgbox("Additional text needs to be saved to USER FIELD 1 on User Fields to save a copy of the quote.", "No USER 1 information saved to quote.")
+'	'End or call unload subroutine
+'	F.Intrinsic.Control.CallSub(f_question_unload)
+'F.Intrinsic.Control.EndIf
+
+F.Intrinsic.String.Build("DoverMEI Quote {1}", V.Local.sQuoteNo.Long, V.Local.sUser1.Trim, V.Local.sFileName)
+F.Intrinsic.Control.CallSub(savefile, "sFileName", V.Local.sFileName)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("CheckUser1_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4479_QuoteFileName.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(f_question_unload)
+Function.Intrinsic.Control.EndIf
+
+Program.Sub.CheckUser1.End
+
+Program.Sub.SaveFile.Start
+F.Intrinsic.Control.SetErrorHandler("SaveFile_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+V.Local.sRet.Declare(String)
+V.Local.lBIRunID.Declare(Long)
+V.Local.lLogID.Declare(Long)
+V.Local.sParams.Declare(String)
+V.Local.sValues.Declare(String)
+V.Local.iRet.Declare(Long)
+V.Local.iReport.Declare(Long)
+
+F.Intrinsic.UI.FolderBrowser("Select location of file", V.Local.sRet)
+
+F.Global.BI.GetIDFromName("ER_4479_QuoteFormLaser.rpt",V.Local.iReport)
+
+F.Intrinsic.Control.If(V.Local.sRet, =, "***CANCEL***")
+	'Call unload function
+	F.Intrinsic.Control.CallSub(f_question_unload)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.String.Build("{0}\{1}",V.Local.sRet,V.Args.sFileName,V.Local.sRet)
+V.Local.sParams.Set("REPORTID*!*Terminal*!*PRTTOT*!*PRTALL*!*PRTEXT*!*COMMENTS*!*REV")
+F.Intrinsic.String.Build("000001*!*{0}*!*Y*!*Y*!*Y*!*0*!*",V.Caller.Terminal,V.Local.sValues)
+
+F.Global.BI.GetRunID(V.Local.lBIRunID)
+F.Global.BI.StartLogging(V.Local.lBIRunID,V.Local.iReport,0,"",V.Local.lLogID)
+
+'The file path is stored in sRet and the name of the file is stored in V.Args.sFileName
+F.Global.BI.RunReportPreProcessor(V.Local.lBIRunID,V.Local.lLogID,V.Local.sParams,V.Local.sValues,"",4,True,"",-1,"",0,V.Local.sRet,"",V.Local.iRet)
+
+F.Global.BI.StopLogging(V.Local.lLogID)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("SaveFile_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4479_QuoteFileName.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(f_question_unload)
+Function.Intrinsic.Control.EndIf
+
+Program.Sub.SaveFile.End
+
+Program.Sub.F_Question_UnLoad.Start
+F.Intrinsic.Control.SetErrorHandler("SaveFile_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+F.ODBC.Connection!con.Close
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("SaveFile_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	Function.Intrinsic.String.Concat("Project: GCG_4479_QuoteFileName.g2u",V.Ambient.Newline,V.Ambient.Newline,"Subroutine: ",V.Ambient.CurrentSubroutine,V.Ambient.NewLine,"Error Occurred ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+Function.Intrinsic.Control.EndIf
+
+Program.Sub.F_Question_UnLoad.End
+
+Program.Sub.Comments.Start
+${$0$}$Custom Quote File Name$}$FEQ$}$4/27/2017 12:27:16 PM$}$False
+${$3$}$0$}$$}$0$}$-1$}$$}$12:00:00 AM$}$Created by FEQ on 4/27/2017 for Dover MEI. This project will grab the text from the user 1 textbox on the Quote header screen to create the custom file name for  the quote. The script 1 button will be used to determine the location the file will be saved into. The format of the file name for the quote is #xxxx@@@@@@, where x is the quote number and @ is additional text from the user 1 field.
+Program.Sub.Comments.End
