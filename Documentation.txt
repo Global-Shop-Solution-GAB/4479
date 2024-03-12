@@ -1,0 +1,14 @@
+This project will be attached to hook 16090 (Pre-print report hook)
+
+It will run from the Print Button on the quote header screen. The code will expect additional text on the user 1 field, from the user fields button on the quote header scree.
+When clicking on the print button, the project will ask if the quote should be printed, saved, or both. 
+If clicking on print, the code will terminate and the print procedure will continue as normal.
+If clicking on save, the code will ask the user for a save location if it successfully finds additional text in the user 1 field of the quote header. It will then tell the program to not print the report on screen and save a pdf version of the quote in the selected location.
+If clicking on both, the process will be the same for the save, with the exception that it will allow the program to print the quote on screen as usual.
+The format of the file name that is saved is #xxx@@@@@, where the x's represent the quote number without leading zeroes, and the @'s represent the additional text stored in the User 1 field for the quote.
+
+**
+
+Update:
+
+Logged in with the customer and they changed specs. They are now only worried about sending emails with the Quote attached as a PDF with the filename format “DoverMEI Quote ####” The files for this are in the “Update” folder. It is a modification of ATG_4136_Email_Quote_Pdf.gas and it is now attached to hook 10850.
